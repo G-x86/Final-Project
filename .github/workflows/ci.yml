@@ -28,7 +28,7 @@ jobs:
       - name: smoke test MCP protocol
         run: python clients/smoke_test.py
 
-      - name: eval 10 งาน
+      - name: eval 12 งาน
         run: python eval/eval.py --no-color
 
       - name: เก็บบันทึกไว้ตรวจย้อนหลัง
@@ -36,6 +36,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eval-logs
+          if-no-files-found: warn
           path: |
             eval/results.md
             eval/eval_runs.jsonl
