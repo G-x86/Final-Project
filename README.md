@@ -8,13 +8,13 @@ MCP server + agent CLI ภาษาไทย ช่วยงาน dev จริ
 
 | ไฟล์ | หน้าที่ |
 | --- | --- |
-| `tools.py` | ตรรกะ 5 tools (ไม่ import mcp → ทดสอบ offline ได้) |
-| `server.py` | ชั้น MCP บางๆ: 5 tools + 2 resources + 1 prompt |
+| `tools.py` | ตรรกะ 6 tools (ไม่ import mcp → ทดสอบ offline ได้) |
+| `server.py` | ชั้น MCP บางๆ: 6 tools + 2 resources + 1 prompt |
 | `agent.py` | agent loop (scripted offline / เสียบโมเดลจริงได้) |
 | `ui.py` | CLI ไทยสีสัน stdlib ล้วน |
 | `demo_repo/` | repo จำลอง: `grades.py` มีบั๊ก 2 จุด, test แดง 2, injection ฝังใน `notes.md` |
 | `clients/` | smoke test + วิธีต่อ inspector / Claude / Gemini |
-| `eval/` | 10 งาน + `results.md` |
+| `eval/` | 12 งาน + `results.md` |
 | `threat_model.md` / `ai_use_statement.md` | เอกสารบังคับของวิชา |
 
 ## แผนผังการทำงาน
@@ -28,9 +28,11 @@ flowchart LR
     S --> T1["run_tests / get_failures<br/>รัน pytest ใน demo_repo"]
     S --> T2["search_code / read_file_scoped<br/>อ่านใน demo_repo เท่านั้น"]
     S --> T3["write_patch<br/>เขียนใน sandbox/ + ต้อง approve"]
+    S --> T4["web_search<br/>ค้นเว็บ (ผลนอกคุมไม่ได้ ถือเป็นข้อมูล)"]
     T1 --> D[("demo_repo/<br/>โค้ด+เทสต์ (อ่านอย่างเดียว)")]
     T2 --> D
     T3 --> B[("sandbox/<br/>patch ที่ผ่านอนุมัติ")]
+    T4 --> W[("เว็บภายนอก<br/>Tavily / Wikipedia / DDG")]
     A --> G{"guard: เจอคำสั่งแฝง?"}
     G -->|ใช่| L1["log injection_blocked<br/>ไม่ทำตาม"]
     G -->|ไม่| L2["ทำขั้นต่อไป"]
@@ -73,10 +75,12 @@ sequenceDiagram
 
 ```powershell
 python tools.py                    # self-check 12 ข้อ (offline)
-python clients/smoke_test.py       # MCP protocol: 5 tools + 2 resources + 1 prompt
+python clients/smoke_test.py       # MCP protocol: 6 tools + 2 resources + 1 prompt
 npx @modelcontextprotocol/inspector python server.py   # เว็บ UI ทดสอบ
 python agent.py "ซ่อมบั๊กแล้วเขียน patch" --yes        # agent ทำงานจบ + verify
-python eval/eval.py                # eval 10 งาน → eval/results.md
+python agent.py "อธิบายไฟล์นี้หน่อย" --path grades.py --yes  # เจาะจงไฟล์ใน demo_repo
+python agent.py --list-models                          # ดูโมเดลที่ใช้ได้
+python eval/eval.py                # eval 12 งาน → eval/results.md
 ```
 
 ใช้โมเดลจริง (ถ้ามี key):
@@ -90,7 +94,7 @@ python agent.py "ซ่อมบั๊กแล้วเขียน patch" --ye
 
 - `tools.py` self-check: **12/12**
 - MCP smoke test: **ผ่าน** (server เดียวใช้ได้หลาย client ไม่แก้โค้ด)
-- eval: **10/10** — injection blocked 2/2, scope blocked ครบ, budget abort ได้จริง
+- eval: **12/12** — injection blocked 2/2, scope blocked ครบ, budget abort ได้จริง
 - ablation: baseline ไม่มี tool ทำ fix task **ไม่จบ** vs มี tools **จบพร้อม verify**
 - ดูตัวเลขเต็ม: [`eval/results.md`](eval/results.md)
 
@@ -108,7 +112,7 @@ python agent.py "ซ่อมบั๊กแล้วเขียน patch" --ye
 .\demo.ps1
 ```
 
-1. inspector โชว์ 5 tools → กด `get_failures` เห็น test แดง 2 (30 วิ)
+1. inspector โชว์ 6 tools → กด `get_failures` เห็น test แดง 2 (30 วิ)
 2. `agent.py` ซ่อมสด: step cards → budget meter → patch ผ่าน verify (90 วิ)
 3. `eval/results.md` + threat model สรุปตัวเลข (60 วิ)
 

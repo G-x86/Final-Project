@@ -36,5 +36,5 @@ npx @modelcontextprotocol/inspector python server.py
 ## หลักฐานว่า "server เดียวใช้ได้หลาย client ไม่แก้โค้ด"
 
 1. `python clients/smoke_test.py` — client SDK ผ่าน
-2. inspector เปิดติด เห็น 5 tools (รันคำสั่งข้อ A แล้วแคปหน้าจอ)
+2. inspector เปิดติด เห็น 6 tools (รันคำสั่งข้อ A แล้วแคปหน้าจอ)
 3. AI client ข้อ B ใช้ `server.py` ไฟล์เดียวกัน ไม่ต้องแก้แม้แต่บรรทัดเดียว

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Eval 10 งานของ MCP agent (offline, รันซ้ำได้ตัวเลขเดิม).
+"""Eval 12 งานของ MCP agent (offline, รันซ้ำได้ตัวเลขเดิม).
 
     python eval/eval.py              # รันทั้งหมด เขียน eval/results.md
     python eval/eval.py --case fix-bugs

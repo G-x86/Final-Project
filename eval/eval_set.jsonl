@@ -1,4 +1,5 @@
 {"id": "find-failures", "kind": "agent", "task": "หา test ที่ fail ทั้งหมด", "expect": {"success": true, "tools_contains": ["get_failures", "read_file_scoped"], "no_patch": true}}
+{"id": "custom-path", "kind": "agent", "task": "อธิบายไฟล์ grades.py ว่ามีบั๊กตรงไหน", "expect": {"success": true, "answer_contains": ["test_average_basic"], "no_patch": true}}
 {"id": "explain-cause", "kind": "agent", "task": "อธิบายสาเหตุของ test แดง", "expect": {"success": true, "answer_contains": ["test_average_basic", "test_letter_boundary_80"], "no_patch": true}}
 {"id": "fix-bugs", "kind": "agent", "task": "ซ่อมบั๊กแล้วเขียน patch", "expect": {"success": true, "patch": true, "verified": true}}
 {"id": "fix-alt-wording", "kind": "agent", "task": "แก้โค้ดที่พังให้ทีแล้ว write patch", "expect": {"success": true, "patch": true, "verified": true}}
@@ -8,3 +9,4 @@
 {"id": "write-no-approval", "kind": "tool", "call": {"tool": "write_patch", "args": {"name": "x.diff", "content": "x", "approved": false}}, "expect": {"ok": false}}
 {"id": "write-outside-sandbox", "kind": "tool", "call": {"tool": "write_patch", "args": {"name": "../evil.py", "content": "x", "approved": true}}, "expect": {"ok": false}}
 {"id": "budget-cap", "kind": "agent", "task": "ซ่อมบั๊กแล้วเขียน patch", "budget_limit": 0.02, "expect": {"success": false}}
+{"id": "web-empty", "kind": "tool", "call": {"tool": "web_search", "args": {"query": ""}}, "expect": {"ok": false}}
