@@ -43,6 +43,29 @@ MAX_READ_CHARS = 20_000
 # ---------------------------------------------------------------- helpers
 
 
+def set_repo(path: str) -> dict:
+    """เปลี่ยน repo เป้าหมายของ tools (CLI เท่านั้น ไม่ใช่ MCP tool).
+
+    ตั้งใจไม่เปิดเป็น tool ให้โมเดลเรียก: ขอบเขตกรงต้องมาจากคนเท่านั้น
+    โมเดลเปลี่ยนกรงตัวเองไม่ได้
+    """
+    global REPO
+    p = pathlib.Path(path).expanduser()
+    if not p.exists() or not p.is_dir():
+        return {"ok": False, "error": "ไม่พบโฟลเดอร์"}
+    rp = p.resolve()
+    forbidden = {pathlib.Path(rp.anchor)}
+    sysroot = os.environ.get("SystemRoot", r"C:\Windows")
+    try:
+        forbidden.add(pathlib.Path(sysroot).resolve())
+    except Exception:
+        pass
+    if rp in forbidden:
+        return {"ok": False, "error": "ห้ามตั้งรากไดรฟ์/โฟลเดอร์ระบบเป็น repo"}
+    REPO = rp
+    return {"ok": True, "repo": str(REPO)}
+
+
 def _inside(child: pathlib.Path, parent: pathlib.Path) -> bool:
     try:
         child.resolve().relative_to(parent.resolve())
@@ -66,24 +89,30 @@ def redact(text: str) -> str:
 
 
 def run_tests(scope: str = "all") -> dict:
-    """รัน pytest ใน demo_repo/tests เท่านั้น คืนสรุปผล (ไม่รันนอกกรง)."""
+    """รัน pytest ใน REPO/tests (ถ้าไม่มีโฟลเดอร์ tests จะรันที่ราก REPO)."""
     target = REPO / "tests"
+    if not target.is_dir():
+        target = REPO
+    basedir = target
     if scope != "all":
         if "/" in scope or "\\" in scope or ".." in scope:
-            return {"ok": False, "error": "scope ต้องเป็นชื่อไฟล์ใน tests เท่านั้น"}
+            return {"ok": False, "error": "scope ต้องเป็นชื่อไฟล์เท่านั้น"}
         target = target / scope
-        if not _inside(target, REPO / "tests"):
-            return {"ok": False, "error": "scope อยู่นอก tests"}
+        if not _inside(target, basedir):
+            return {"ok": False, "error": "scope อยู่นอกขอบเขต"}
     try:
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
         p = subprocess.run(
-            [sys.executable, "-m", "pytest", str(target), "-q"],
-            capture_output=True, text=True, timeout=60, cwd=str(REPO))
+            [sys.executable, "-m", "pytest", str(target), "-q",
+             "-p", "no:cacheprovider"],
+            capture_output=True, text=True, timeout=60, cwd=str(REPO),
+            env=env)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "หมดเวลา 60 วินาที"}
     out = (p.stdout or "") + (p.stderr or "")
     failed = sorted({m.group(1) for m in re.finditer(r"FAILED\s+(\S+)", out)})
     passed = "passed" in out
-    summary = {"ok": True, "returncode": p.returncode, "passed": passed,
+    summary = {"ok": True, "repo": str(REPO), "returncode": p.returncode, "passed": passed,
                "failed": failed, "output_tail": out[-1500:]}
     LAST_REPORT.write_text(json.dumps(summary, ensure_ascii=False),
                            encoding="utf-8")
@@ -110,8 +139,15 @@ def search_code(query: str, max_results: int = 5) -> dict:
 
 
 def get_failures() -> dict:
-    """รายชื่อ test ที่ fail จากการรันล่าสุด (ถ้ายังไม่เคยรัน จะรันให้ก่อน)."""
-    if not LAST_REPORT.exists():
+    """รายชื่อ test ที่ fail จากการรันล่าสุด (ถ้ายังไม่เคยรัน หรือย้าย repo จะรันให้ก่อน)."""
+    need_run = True
+    if LAST_REPORT.exists():
+        try:
+            rep = json.loads(LAST_REPORT.read_text(encoding="utf-8"))
+            need_run = rep.get("repo") != str(REPO)
+        except (OSError, ValueError):
+            need_run = True
+    if need_run:
         run_tests("all")
     try:
         rep = json.loads(LAST_REPORT.read_text(encoding="utf-8"))

@@ -303,13 +303,21 @@ def _has_injection(text: str) -> bool:
 
 
 def _verify_patch(path: pathlib.Path) -> tuple:
-    """ตรวจ patch: exec โค้ดที่ซ่อมแล้ว + assert 2 ข้อที่เคยแดง."""
+    """ตรวจ patch: exec โค้ดที่ซ่อมแล้ว + assert 2 ข้อที่เคยแดง (โครง demo).
+
+    ถ้าไม่ใช่โครง demo (ไม่มีฟังก์ชัน average/letter) จะข้ามการตรวจ
+    อัตโนมัติแล้วคืน None ให้คนตรวจเอง — ไม่มั่วว่าผ่าน
+    """
     try:
         ns = {}
         exec(path.read_text(encoding="utf-8"), ns)
+        if "average" not in ns or "letter" not in ns:
+            return None, "ข้ามการตรวจอัตโนมัติ (ไม่ใช่โครง demo) ให้คนตรวจเอง"
         assert ns["average"]([80, 90, 100]) == 90.0
         assert ns["letter"](80) == "A"
         return True, "exec + assert 2 ข้อที่เคยแดง ผ่าน"
+    except AssertionError as e:
+        return False, f"ตรวจไม่ผ่าน: {e}"
     except Exception as e:
         return False, f"ตรวจไม่ผ่าน: {e}"
 
@@ -408,7 +416,8 @@ def run_task(task, brain, auto=False, verbose=True,
             log("verify", path=patch_path, passed=ok, detail=msg)
             history.append({"note": f"ตรวจ patch: {msg}"})
             if verbose:
-                print(ui.c(f"   ตรวจ patch: {msg}", "green" if ok else "red"))
+                col = "green" if ok else ("yellow" if ok is None else "red")
+                print(ui.c(f"   ตรวจ patch: {msg}", col))
 
     log("done", steps=max_steps, spent=round(budget.spent, 4), passed=False)
     if verbose:
@@ -426,7 +435,8 @@ def main():
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--provider", default=None, help="openrouter|deepseek|local (ไม่ระบุ = scripted offline)")
     ap.add_argument("--model", default=None)
-    ap.add_argument("--path", default=None, help="เจาะจงไฟล์ใน demo_repo เช่น --path grades.py")
+    ap.add_argument("--path", default=None, help="เจาะจงไฟล์ใน repo เช่น --path grades.py")
+    ap.add_argument("--repo", default=None, help="ชี้ไปโปรเจคตัวเอง เช่น --repo D:/myproj (อ่านอย่างเดียว เขียนลง sandbox เหมือนเดิม)")
     ap.add_argument("--list-models", action="store_true", help="โชว์โมเดลให้เลือกแล้วจบ")
     args = ap.parse_args()
     _load_dotenv()
@@ -446,8 +456,14 @@ def main():
         brain = ScriptedBrain()
         desc = "สมองจำลอง offline (กำหนดได้ รันซ้ำได้)"
     print(ui.c(f"เริ่มงานด้วย: {desc}", "dim"))
+    if args.repo:
+        r = tools.set_repo(args.repo)
+        if not r.get("ok"):
+            print(ui.c(f"ตั้ง repo ไม่ได้: {r.get('error')}", "red"))
+            return 2
+        print(ui.c(f"repo เป้าหมาย: {r['repo']} (อ่านอย่างเดียว)", "dim"))
     if args.path:
-        print(ui.c(f"ไฟล์เป้าหมาย: {args.path} (ต้องอยู่ใต้ demo_repo)", "dim"))
+        print(ui.c(f"ไฟล์เป้าหมาย: {args.path} (ต้องอยู่ใน repo เป้าหมาย)", "dim"))
     r = run_task(args.task, brain, auto=args.yes, target=args.path)
     return 0 if r["success"] else 1
 
