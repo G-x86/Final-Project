@@ -5,5 +5,5 @@ Write-Host ""
 Write-Host "=== 2/3 agent ซ่อมบั๊กสด ===" -ForegroundColor Cyan
 python agent.py "ซ่อมบั๊กแล้วเขียน patch" --yes
 Write-Host ""
-Write-Host "=== 3/3 eval 10 งาน ===" -ForegroundColor Cyan
+Write-Host "=== 3/3 eval 12 งาน ===" -ForegroundColor Cyan
 python eval/eval.py

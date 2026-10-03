@@ -54,6 +54,21 @@ def c(text: str, color: str) -> str:
     return f"{COLORS[color]}{text}{COLORS['reset']}"
 
 
+import unicodedata
+
+
+def display_width(text: str) -> int:
+    """คำนวณความกว้างจริงบน terminal (สระบน/ล่าง/วรรณยุกต์ไทย กว้าง 0 ช่อง)."""
+    w = 0
+    for ch in text:
+        cat = unicodedata.category(ch)
+        if cat in ("Mn", "Me", "Cf"):
+            continue
+        ea = unicodedata.east_asian_width(ch)
+        w += 2 if ea in ("W", "F") else 1
+    return w
+
+
 def width() -> int:
     return max(60, min(100, shutil.get_terminal_size(fallback=(80, 24)).columns - 2))
 
@@ -62,28 +77,29 @@ def banner(title: str, subtitle: str = ""):
     w = width()
     print(c("╔" + "═" * (w - 2) + "╗", "cyan"))
     print(c("║", "cyan") + c(f"  {title}", "bold") +
-          " " * max(0, w - len(title) - 5) + c("║", "cyan"))
+          " " * max(0, w - display_width(title) - 5) + c("║", "cyan"))
     if subtitle:
         print(c("║", "cyan") + c(f"  {subtitle}", "dim") +
-              " " * max(0, w - len(subtitle) - 5) + c("║", "cyan"))
+              " " * max(0, w - display_width(subtitle) - 5) + c("║", "cyan"))
     print(c("╚" + "═" * (w - 2) + "╝", "cyan"))
 
 
 def panel(title: str, lines: list, color="blue"):
     w = width()
-    print(c(f"┌─ {title} " + "─" * max(0, w - len(title) - 5) + "┐", color))
+    print(c(f"┌─ {title} " + "─" * max(0, w - display_width(title) - 5) + "┐", color))
     for ln in lines:
         for chunk in (ln[i:i + w - 4] for i in range(0, max(1, len(ln)), w - 4)):
-            print(c("│", color) + f" {chunk}")
+            chunk_pad = max(0, w - 4 - display_width(chunk))
+            print(c("│", color) + f" {chunk}" + " " * chunk_pad)
     print(c("└" + "─" * (w - 2) + "┘", color))
 
 
 def table(headers: list, rows: list, aligns: str = ""):
     cols = len(headers)
-    widths = [len(h) for h in headers]
+    widths = [display_width(h) for h in headers]
     for r in rows:
         for i in range(cols):
-            widths[i] = max(widths[i], len(str(r[i])))
+            widths[i] = max(widths[i], display_width(str(r[i])))
     total = sum(widths) + cols * 3 + 1
     if total > width():
         over = total - width()
@@ -92,10 +108,15 @@ def table(headers: list, rows: list, aligns: str = ""):
         cells = []
         for i, v in enumerate(vals):
             s = str(v)
-            if len(s) > widths[i]:
+            dw = display_width(s)
+            if dw > widths[i]:
                 s = s[:widths[i] - 1] + "…"
-            pad = ">" if aligns[i:i + 1] == "r" else "<"
-            cells.append(f"{s:{pad}{widths[i]}}")
+                dw = display_width(s)
+            pad = max(0, widths[i] - dw)
+            if aligns[i:i + 1] == "r":
+                cells.append(" " * pad + s)
+            else:
+                cells.append(s + " " * pad)
         line = "│ " + " │ ".join(cells) + " │"
         return c(line, color) if color else line
     bar = "─" * (sum(widths) + cols * 3 + 1)
@@ -107,14 +128,15 @@ def table(headers: list, rows: list, aligns: str = ""):
     print(c("└" + bar[1:-1] + "┘", "dim"))
 
 
-def step_card(n: int, total: int, tool: str, args: str, status: str, detail: str = ""):
-    mark = {"ok": ("green", "✔"), "fail": ("red", "✘"),
-            "run": ("yellow", "▸"), "block": ("red", "⛔")}.get(status, ("dim", "•"))
-    head = f"STEP {n}/{total} {mark[1]} {tool}({args})"
+def step_card(n: int, total: int, tool: str, args: str, status: str, detail: str = "", show_step: bool = True):
+    mark = {"ok": ("green", "[OK]"), "fail": ("red", "[FAIL]"),
+            "run": ("yellow", "[RUN]"), "block": ("red", "[BLOCK]")}.get(status, ("dim", "[*]"))
+    head = f"STEP {n}/{total} {mark[1]} {tool}({args})" if show_step and total else f"{mark[1]} {tool}({args})"
     print(c(head, mark[0]))
     if detail:
+        indent = "         " if (show_step and total) else "   "
         for ln in detail.splitlines()[:6]:
-            print(c(f"         {ln[:width()-10]}", "dim"))
+            print(c(f"{indent}{ln[:width()-10]}", "dim"))
 
 
 def meter(used: float, limit: float):
@@ -131,5 +153,5 @@ def verdict(passed: bool, lines: list):
 
 
 def status_row(label: str, ok: bool, detail: str = ""):
-    mark = c("✔ PASS", "green") if ok else c("✘ FAIL", "red")
-    print(f"  [{mark}] {label}" + (f" — {detail}" if detail and not ok else ""))
+    mark = c("[PASS]", "green") if ok else c("[FAIL]", "red")
+    print(f"  {mark} {label}" + (f" — {detail}" if detail and not ok else ""))

@@ -67,8 +67,16 @@ def web_search(query: str, max_results: int = 3) -> dict:
 @srv.resource("repo://tree")
 def repo_tree() -> str:
     """โครงไฟล์ของ demo_repo (read-only)."""
-    files = sorted(str(p.relative_to(tools.REPO))
-                   for p in tools.REPO.rglob("*") if p.is_file())
+    files = []
+    for p in sorted(tools.REPO.rglob("*")):
+        if p.is_file():
+            try:
+                rel = p.relative_to(tools.REPO)
+                if any(part in tools.IGNORED_DIRS or part.startswith(".") for part in rel.parts[:-1]):
+                    continue
+                files.append(str(rel))
+            except ValueError:
+                continue
     return "\n".join(files)
 
 

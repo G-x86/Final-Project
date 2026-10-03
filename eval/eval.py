@@ -112,7 +112,7 @@ def main():
     md = ["# Eval results — MCP dev-assistant (scripted offline)",
           "",
           f"date: {time.strftime('%Y-%m-%d')} | cases: {n_ok}/{len(rows)} passed | "
-          f"time: {dt:.1f}s | brain: scripted | tools: tools.py 5 ตัว",
+          f"time: {dt:.1f}s | brain: scripted | tools: tools.py 6 ตัว",
           "",
           "| id | kind | steps | tools | eval |",
           "|---|---|---|---|---|"]
@@ -126,7 +126,7 @@ def main():
            "- scope blocked: scope-escape + write 2 เคส ถูกปฏิเสธครบ",
            "- budget abort: budget-cap หยุดงานจริงเมื่อเกินงบ",
            f"- ablation: baseline ไม่มี tool ทำ fix task ไม่จบ (success={base['success']}) "
-           "vs มี tools ครบ 5 ตัวจบพร้อม verify",
+           "vs มี tools ครบ 6 ตัวจบพร้อม verify",
            "",
            "## Reproduce",
            "`python tools.py` → `python clients/smoke_test.py` → `python eval/eval.py`",

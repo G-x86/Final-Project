@@ -79,7 +79,7 @@ python clients/smoke_test.py       # MCP protocol: 6 tools + 2 resources + 1 pro
 npx @modelcontextprotocol/inspector python server.py   # เว็บ UI ทดสอบ
 python agent.py "ซ่อมบั๊กแล้วเขียน patch" --yes        # agent ทำงานจบ + verify
 python agent.py "อธิบายไฟล์นี้หน่อย" --path grades.py --yes  # เจาะจงไฟล์ใน repo
-python agent.py "หา test ที่ fail" --repo D:/myproj --yes  # ชี้โปรเจคตัวเอง (อ่านอย่างเดียว เขียนลง sandbox เหมือนเดิม)
+python agent.py "ซ่อมบั๊กแล้วเขียน patch" --yes --max-steps 5 --budget 0.10  # ปรับเพดานรอบและงบประมาณ
 python agent.py --list-models                          # ดูโมเดลที่ใช้ได้
 python eval/eval.py                # eval 12 งาน → eval/results.md
 ```

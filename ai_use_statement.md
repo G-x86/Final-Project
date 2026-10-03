@@ -33,8 +33,8 @@
 - [x] เขียนเทสที่จะล้มเหลวถ้าโค้ดผิด (`tools.py` self-check 13 ข้อ, `smoke_test.py`, eval 12 งาน)
 - [x] ตรวจว่าการอ้างอิงทุกรายการมีอยู่จริง (คำสั่งรันใน README ลองเองทุกคำสั่ง)
 
-รายละเอียด: ทุกไฟล์ผ่านการรันจริงบนเครื่องนี้ — `python tools.py` (12/12),
-`python clients/smoke_test.py`, `python eval/eval.py` (10/10),
+รายละเอียด: ทุกไฟล์ผ่านการรันจริงบนเครื่องนี้ — `python tools.py` (13/13),
+`python clients/smoke_test.py`, `python eval/eval.py` (12/12),
 agent ซ่อมบั๊กจบพร้อม verify, inspector เปิดติด
 
 ## 5. สิ่งที่ AI ให้มาผิด และฉันจับได้

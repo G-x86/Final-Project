@@ -79,13 +79,15 @@ def redact(text: str) -> str:
 
     ตัดขา A ของกฎสามประการ: ถึงโค้ดมี secret โมเดลก็ไม่เคยเห็นค่าจริง
     """
-    text = re.sub(r"(?i)(api[_-]?key\s*=\s*['\"]?)[^'\"\s]+", r"\1***", text)
+    text = re.sub(r"(?i)(api[_-]?key\s*[:=]\s*['\"]?)[^'\",\s}]+", r"\1***", text)
     text = re.sub(r"sk-[A-Za-z0-9_-]{8,}", "sk-***", text)
     text = re.sub(r"AKIA[0-9A-Z]{16}", "AKIA***", text)
     return text
 
 
 # ---------------------------------------------------------------- tools
+
+IGNORED_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv", "node_modules", "sandbox"}
 
 
 def run_tests(scope: str = "all") -> dict:
@@ -111,7 +113,10 @@ def run_tests(scope: str = "all") -> dict:
         return {"ok": False, "error": "หมดเวลา 60 วินาที"}
     out = (p.stdout or "") + (p.stderr or "")
     failed = sorted({m.group(1) for m in re.finditer(r"FAILED\s+(\S+)", out)})
-    passed = "passed" in out
+    if not failed and p.returncode != 0:
+        errors = sorted({m.group(1) for m in re.finditer(r"ERROR\s+(\S+)", out)})
+        failed = errors
+    passed = (p.returncode == 0)
     summary = {"ok": True, "repo": str(REPO), "returncode": p.returncode, "passed": passed,
                "failed": failed, "output_tail": out[-1500:]}
     LAST_REPORT.write_text(json.dumps(summary, ensure_ascii=False),
@@ -125,8 +130,15 @@ def search_code(query: str, max_results: int = 5) -> dict:
         return {"ok": False, "error": "query ว่าง"}
     hits = []
     for f in sorted(REPO.rglob("*.py")):
+        # ข้ามโฟลเดอร์ที่ไม่จำเป็น เช่น .venv, __pycache__, .git
         try:
-            lines = f.read_text(encoding="utf-8").splitlines()
+            rel_parts = f.relative_to(REPO).parts[:-1]
+            if any(part in IGNORED_DIRS or part.startswith(".") for part in rel_parts):
+                continue
+        except ValueError:
+            pass
+        try:
+            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
         for i, line in enumerate(lines, 1):
@@ -168,20 +180,33 @@ def read_file_scoped(path: str) -> dict:
         return {"ok": False, "error": "อ่านได้เฉพาะไฟล์ใต้ demo_repo"}
     if not target.is_file():
         return {"ok": False, "error": "ไม่พบไฟล์"}
-    text = target.read_text(encoding="utf-8")
+    try:
+        text = target.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return {"ok": False, "error": "อ่านไฟล์ไม่ได้ (ไม่ใช่ข้อความ UTF-8)"}
+    except OSError as e:
+        return {"ok": False, "error": f"อ่านไฟล์ไม่ได้ ({e})"}
     if len(text) > MAX_READ_CHARS:
         return {"ok": False, "error": "ไฟล์ใหญ่เกิน 20000 อักษร"}
     return {"ok": True, "path": str(target.relative_to(REPO)), "content": text}
 
 
-def write_patch(name: str, content: str, approved: bool = False) -> dict:
+def write_patch(name: str = "", content: str = "", approved: bool = False, **kwargs) -> dict:
     """เขียนไฟล์ patch ลง sandbox/ เท่านั้น และต้อง approved=True.
 
     approved=True มาจาก approve() ของ agent (คนกด y) หรือ --yes ใน CI
     ที่โพสต์เป็น comment เท่านั้น ไม่มีการ push อัตโนมัติ
+    รองรับ alias เช่น path, patch, diff เพื่อความทนทานต่อโมเดล LLM
     """
     if not approved:
         return {"ok": False, "error": "ต้องผ่านการอนุมัติก่อน (approved=True)"}
+    if not name:
+        target_name = kwargs.get("path") or kwargs.get("filename") or kwargs.get("file") or ""
+        if target_name:
+            base = pathlib.Path(str(target_name)).name
+            name = f"fix_{base}" if not base.startswith("fix_") else base
+    if not content:
+        content = kwargs.get("patch") or kwargs.get("diff") or kwargs.get("code") or ""
     if not name or "/" in name or "\\" in name or ".." in name:
         return {"ok": False, "error": "ชื่อไฟล์ต้องเป็นชื่อเดียว ไม่มี path"}
     if len(content) > MAX_READ_CHARS:
