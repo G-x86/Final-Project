@@ -11,6 +11,12 @@ from __future__ import annotations
 
 import sys
 
+for _s in (sys.stdout, sys.stderr):  # กัน UnicodeEncodeError บน console cp1252
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from mcp.server.fastmcp import FastMCP
 
 import tools

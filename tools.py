@@ -28,6 +28,12 @@ import sys
 import urllib.parse
 import urllib.request
 
+for _s in (sys.stdout, sys.stderr):  # กัน UnicodeEncodeError บน console cp1252 (เช่น CI)
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 HERE = pathlib.Path(__file__).parent
 REPO = HERE / "demo_repo"
 SANDBOX = HERE / "sandbox"

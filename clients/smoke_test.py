@@ -14,6 +14,12 @@ import sys
 
 HERE = pathlib.Path(__file__).parent.parent
 
+for _s in (sys.stdout, sys.stderr):  # กัน UnicodeEncodeError บน console cp1252 (เช่น CI)
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 

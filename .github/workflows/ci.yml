@@ -12,6 +12,8 @@ jobs:
   verify:
     runs-on: windows-latest
     timeout-minutes: 10
+    env:
+      PYTHONUTF8: 1 # บังคับ stdout UTF-8 กันพิมพ์ไทยพังบน console cp1252
     steps:
       - uses: actions/checkout@v4
 
