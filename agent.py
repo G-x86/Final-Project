@@ -170,8 +170,11 @@ def _openai_chat(base_url, api_key, model, messages, timeout=90):
 
 
 PROVIDERS = {
-    "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
-    "local": ("http://localhost:11434/v1", None),
+    "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY",
+                   "z-ai/glm-4.5:free"),
+    "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY",
+                 "deepseek-chat"),
+    "local": ("http://localhost:11434/v1", None, "qwen3:8b"),
 }
 
 
@@ -179,10 +182,10 @@ class RealBrain:
     """สมองโมเดลจริง (OpenAI-compatible) คืน JSON tool-call/answer."""
 
     def __init__(self, provider, model):
-        base_url, key_env = PROVIDERS.get(provider, PROVIDERS["local"])
+        base_url, key_env, default_model = PROVIDERS.get(provider, PROVIDERS["local"])
         self.base_url = os.environ.get("LLM_BASE_URL", base_url)
         self.api_key = os.environ.get(key_env, "not-needed") if key_env else "not-needed"
-        self.model = model or os.environ.get("LLM_MODEL", "qwen3:8b")
+        self.model = model or os.environ.get("LLM_MODEL") or default_model
 
     def __call__(self, history):
         task = history[0]["task"]
@@ -209,6 +212,18 @@ TOOLS = {"run_tests": tools.run_tests, "search_code": tools.search_code,
          "get_failures": tools.get_failures,
          "read_file_scoped": tools.read_file_scoped,
          "write_patch": tools.write_patch}
+
+
+def _load_dotenv():
+    """อ่าน .env (ถ้ามี) เข้า environment — key จริงอยู่ในไฟล์ ไม่เข้า git."""
+    env = HERE / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip("\"'"))
 
 
 def approve(action, detail, auto=False):
@@ -348,9 +363,10 @@ def main():
     ap.add_argument("task", help="งานภาษาคน เช่น \"หา test ที่ fail แล้วอธิบาย\"")
     ap.add_argument("--yes", action="store_true", help="อนุมัติอัตโนมัติ (sandbox เท่านั้น)")
     ap.add_argument("--no-color", action="store_true")
-    ap.add_argument("--provider", default=None, help="openrouter|local (ไม่ระบุ = scripted offline)")
+    ap.add_argument("--provider", default=None, help="openrouter|deepseek|local (ไม่ระบุ = scripted offline)")
     ap.add_argument("--model", default=None)
     args = ap.parse_args()
+    _load_dotenv()
     ui.enabled(args.no_color)
 
     if args.provider:
