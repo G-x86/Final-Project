@@ -22,7 +22,7 @@ jobs:
           python-version: "3.11"
 
       - name: ติดตั้ง dependency
-        run: pip install "mcp[cli]" pytest
+        run: pip install "mcp[cli]<2" pytest # ปัก mcp v1 ให้ตรงเครื่อง dev (v2 เปลี่ยน API)
 
       - name: self-check ตรรกะ tools (offline)
         run: python tools.py
